@@ -29,17 +29,28 @@ pub fn App() -> impl IntoView {
     }
 }
 
-/// Renders the home page of your application.
 #[component]
 fn HomePage() -> impl IntoView {
-    // Creates a reactive value to update the button
-    let (count, set_count) = create_signal(0);
-    let on_click = move |_| set_count.update(|count| *count += 1);
+    use leptos_use::{use_websocket, UseWebsocketReturn};
+    let (state, set_state) = create_signal("Un-initialized".to_string());
+    let (history, set_history) = create_signal(vec![]);
+    let UseWebsocketReturn { message, send, .. } = use_websocket("ws://localhost:3000/ws");
+
+    create_effect(move |_| {
+        if let Some(msg) = message.get() {
+            set_history.update(|history| history.push(format!("Received: {msg}")));
+            send(&msg);
+            set_history.update(|history| history.push(format!("Sent: {msg}")));
+            set_state.set(msg);
+        }
+    });
 
     view! {
-        <h1>"Welcome to Leptos!"</h1>
-        <button on:click=on_click>"Click Me: " {count}</button>
+        <h1>"Websocket Test"</h1>
+        <p>"Current value: " {state}</p>
+        <h2>"Websocket History"</h2>
+        <For each=move || history.get().into_iter().enumerate() key=|(index, _)| *index let:item>
+            <p>{item.1}</p>
+        </For>
     }
 }
-
-// }
