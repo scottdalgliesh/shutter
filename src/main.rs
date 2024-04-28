@@ -1,37 +1,16 @@
 #![cfg(feature = "ssr")]
 
 use axum::{
-    extract::ws::{WebSocketUpgrade, WebSocket, Message},
-    extract::{FromRef, State},
-    routing::{get, post},
-    response::Response,
-    Router,
+    extract::{ws::{Message, WebSocket, WebSocketUpgrade}, State}, response::Response, routing::get, Router,
 };
 use leptos::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
 use shutter::app::*;
+use shutter::state::AppState;
 use shutter::fileserv::file_and_error_handler;
 use tokio::sync::broadcast;
 use futures::{stream::StreamExt, SinkExt};
-use std::sync::{Arc, Mutex};
 
-#[derive(FromRef, Debug, Clone)]
-pub struct AppState {
-    leptos_options: LeptosOptions,
-    tx: broadcast::Sender<bool>,
-    sensor_state: Arc<Mutex<bool>>,
-}
-
-impl AppState {
-    fn new(leptos_options: LeptosOptions) -> Self {
-        let (tx, _) = broadcast::channel(32);
-        Self{
-            leptos_options,
-            tx,
-            sensor_state: Arc::new(Mutex::new(false)),
-        }
-    }
-}
 
 #[tokio::main]
 async fn main() {
@@ -42,13 +21,15 @@ async fn main() {
 
     let app_state = AppState::new(leptos_options);
     let app = Router::new()
-        .leptos_routes(
+        .leptos_routes_with_context(
             &app_state,
             routes,
+            {
+                let app_state = app_state.clone();
+                move || provide_context(app_state.clone())
+            },
             App,
         )
-        .route("/api/*fn_name", post(leptos_axum::handle_server_fns))
-        .route("/toggle_state", get(toggle_state))
         .route("/ws", get(socket_handler))
         .fallback(file_and_error_handler)
         .with_state(app_state);
@@ -88,12 +69,4 @@ async fn socket(socket: WebSocket, tx: broadcast::Sender<bool>) {
         _ = (&mut send_task) => recv_task.abort(),
         _ = (&mut recv_task) => send_task.abort(),
     };
-}
-
-async fn toggle_state(State(state): State<AppState>) {
-    let mut sensor_state = state.sensor_state.lock().unwrap();
-    *sensor_state = !*sensor_state;
-    let tx = state.tx.clone();
-    tx.send(*sensor_state).unwrap();
-    logging::log!("Server: updated state to {sensor_state}");
 }
