@@ -1,4 +1,41 @@
+@import "./leptonic/leptonic-themes";
+
 body {
 	font-family: sans-serif;
 	text-align: center;
+}
+
+#app_window {
+	// background-color: lightblue;
+	// max-width: 800px;
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+#app_content {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 4px;
+	width:50%;
+	max-width: 800px;
+	background-color: lightblue;
+}
+
+.sensor_card {
+	border-radius: 0.5em;
+	width:50%;
+	height: 2em;
+	align-content: center;
+}
+
+.active {
+	background-color: coral;
+}
+
+.inactive {
+	background-color: cornflowerblue;
 }

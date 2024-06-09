@@ -1,15 +1,20 @@
 #![cfg(feature = "ssr")]
 
 use axum::{
-    debug_handler, extract::{ws::{Message, WebSocket, WebSocketUpgrade}, Path, State}, response::Response, routing::{get, post}, Router
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        Path, State,
+    },
+    response::Response,
+    routing::{get, post},
+    Router,
 };
+use futures::{stream::StreamExt, SinkExt};
 use leptos::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
 use shutter::app::*;
-use shutter::state::AppState;
 use shutter::fileserv::file_and_error_handler;
-use futures::{stream::StreamExt, SinkExt};
-
+use shutter::state::AppState;
 
 #[tokio::main]
 async fn main() {
@@ -23,9 +28,9 @@ async fn main() {
         .leptos_routes_with_context(
             &app_state,
             routes,
-            { 
+            {
                 let app_state = app_state.clone();
-                move || provide_context(app_state.clone()) 
+                move || provide_context(app_state.clone())
             },
             App,
         )
@@ -61,7 +66,7 @@ async fn socket(socket: WebSocket, app_state: AppState) {
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = ws_rx.next().await {
             logging::log!("Client echo: {text}");
-        } 
+        }
     });
 
     // if either task completes, abort the other as well
@@ -71,16 +76,21 @@ async fn socket(socket: WebSocket, app_state: AppState) {
     };
 }
 
-#[debug_handler]
-async fn set_sensor_state(Path((sensor_id, sensor_state)): Path<(usize, bool)>, State(app_state): State<AppState>) {
-    
-    // update sensor state on server    
+async fn set_sensor_state(
+    Path((sensor_id, sensor_state)): Path<(i32, bool)>,
+    State(app_state): State<AppState>,
+) {
+    // update sensor state on server
     let mut app_sensor_state = app_state.sensor_state.lock().unwrap();
-    app_sensor_state.0[sensor_id] = Some(sensor_state);
+    app_sensor_state.insert(sensor_id, Some(sensor_state));
 
     // serialize sensor state to be passed to websocket
     let msg = serde_json::to_string(&app_sensor_state.clone()).unwrap();
     let server_tx = app_state.tx.clone();
-    let _ = server_tx.send(msg); 
-    logging::log!("Server: updated sensor id: {:?} to state {:?}", sensor_id, sensor_state);
+    let _ = server_tx.send(msg);
+    logging::log!(
+        "Server: updated sensor id: {:?} to state {:?}",
+        sensor_id,
+        sensor_state
+    );
 }

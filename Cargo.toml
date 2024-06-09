@@ -24,15 +24,21 @@ serde = { version = "1.0.198", features = ["derive"] }
 leptos-use = "0.10.8"
 futures = "0.3.30"
 serde_json = "1.0.116"
+leptonic = { version = "0.5.0", features = ["nightly"] }
+time = "0.3.36"
+
+[patch.crates-io]
+leptonic = { git = "https://github.com/lpotthast/leptonic" }
 
 [features]
-hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
+hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate", "leptonic/hydrate"]
 ssr = [
     "dep:axum",
     "dep:tokio",
     "dep:tower",
     "dep:tower-http",
     "dep:leptos_axum",
+    "leptonic/ssr",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
@@ -108,3 +114,10 @@ lib-default-features = false
 #
 # Optional. Defaults to "release".
 lib-profile-release = "wasm-release"
+
+[package.metadata.leptonic]
+# REQUIRED: Leptonic's build-script will copy the Leptonic themes to this directory.
+style-dir = "style"
+
+# REQUIRED: Leptonic's build-script will copy static JS dependencies to this directory.
+js-dir = "public/js"
