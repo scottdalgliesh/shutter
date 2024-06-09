@@ -14,7 +14,7 @@ use leptos::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
 use shutter::app::*;
 use shutter::fileserv::file_and_error_handler;
-use shutter::state::AppState;
+use shutter::state::{AppState, SensorData};
 
 #[tokio::main]
 async fn main() {
@@ -80,9 +80,16 @@ async fn set_sensor_state(
     Path((sensor_id, sensor_state)): Path<(i32, bool)>,
     State(app_state): State<AppState>,
 ) {
-    // update sensor state on server
+    // update sensor state on server if existing, otherwise add new sensor
     let mut app_sensor_state = app_state.sensor_state.lock().unwrap();
-    app_sensor_state.insert(sensor_id, Some(sensor_state));
+    if let Some(sensor_data) = app_sensor_state.get_mut(&sensor_id) {
+        sensor_data.update_state(sensor_state)
+    } else {
+        app_sensor_state.insert(
+            sensor_id,
+            SensorData::new(&format!("Sensor {sensor_id}"), sensor_state),
+        );
+    }
 
     // serialize sensor state to be passed to websocket
     let msg = serde_json::to_string(&app_sensor_state.clone()).unwrap();

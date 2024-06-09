@@ -1,5 +1,5 @@
 use crate::error_template::{AppError, ErrorTemplate};
-use crate::state::SensorStateMap;
+use crate::state::{SensorData, SensorStateMap};
 use leptonic::components::prelude::*;
 use leptos::*;
 use leptos_meta::*;
@@ -46,9 +46,9 @@ fn home_page() -> impl IntoView {
                     view! { <p>"No sensors were found."</p> }.into_view()
                 } else {
                     inner
-                        .into_iter()
-                        .map(move |(id, state)| {
-                            view! { <SensorCard state=state id=id/> }
+                        .into_values()
+                        .map(move |data| {
+                            view! { <SensorCard data=data/> }
                         })
                         .collect_view()
                 }
@@ -100,30 +100,28 @@ fn home_page() -> impl IntoView {
 }
 
 #[component]
-fn sensor_card(state: Option<bool>, id: i32) -> impl IntoView {
-    let color = move || match state {
-        Some(true) => "cornflowerblue",
-        Some(false) => "coral",
-        None => "grey",
+fn sensor_card(data: SensorData) -> impl IntoView {
+    let since_last_update = time::OffsetDateTime::now_utc() - data.last_update;
+    let is_active = since_last_update < time::Duration::seconds(5);
+
+    let color = move || match (data.state, is_active) {
+        (true, true) => "cornflowerblue",
+        (false, true) => "coral",
+        (_, false) => "grey",
     };
 
     view! {
         <div class="sensor_card" style:background-color=color>
-            Sensor
-            {id}
+            {data.name}
         </div>
     }
 }
 
 #[server]
 pub async fn get_sensors() -> Result<SensorStateMap, ServerFnError> {
-    use std::thread::sleep;
-    use std::time::Duration;
-    sleep(Duration::from_secs(3));
     Ok(expect_context::<AppState>()
         .sensor_state
         .lock()
         .unwrap()
         .clone())
-    // Err(ServerFnError::Response("Error string".to_string()))
 }
