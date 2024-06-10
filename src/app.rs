@@ -4,6 +4,7 @@ use leptonic::components::prelude::*;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
+use leptos_use::use_interval_fn;
 
 #[cfg(feature = "ssr")]
 use crate::state::AppState;
@@ -101,10 +102,13 @@ fn home_page() -> impl IntoView {
 
 #[component]
 fn sensor_card(data: SensorData) -> impl IntoView {
-    let since_last_update = time::OffsetDateTime::now_utc() - data.last_update;
-    let is_active = since_last_update < time::Duration::seconds(5);
+    // set up reactive current time (updated once per second)
+    let (now, set_now) = create_signal(time::OffsetDateTime::now_utc());
+    use_interval_fn(move || set_now.set(time::OffsetDateTime::now_utc()), 1_000);
+    let since_last_update = move || now.get() - data.last_update;
+    let is_active = move || since_last_update() < time::Duration::seconds(10);
 
-    let color = move || match (data.state, is_active) {
+    let color = move || match (data.state, is_active()) {
         (true, true) => "cornflowerblue",
         (false, true) => "coral",
         (_, false) => "grey",
