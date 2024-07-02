@@ -12,17 +12,19 @@ use {
 
 pub type SensorStateMap = BTreeMap<i32, SensorData>;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct SensorData {
+    pub id: i32,
     pub name: String,
     pub state: bool,
     pub last_update: OffsetDateTime,
 }
 
 impl SensorData {
-    pub fn new(name: &str, state: bool) -> Self {
+    pub fn new(id: i32, state: bool) -> Self {
         Self {
-            name: name.to_string(),
+            id,
+            name: format!("Sensor {id}"),
             state,
             last_update: OffsetDateTime::now_utc(),
         }
@@ -50,9 +52,9 @@ impl AppState {
             leptos_options,
             tx,
             sensor_state: Arc::new(Mutex::new(SensorStateMap::from([
-                (0, SensorData::new("Sensor 0", false)),
-                (1, SensorData::new("Sensor 1", false)),
-                (2, SensorData::new("Sensor 2", false)),
+                (0, SensorData::new(0, false)),
+                (1, SensorData::new(1, false)),
+                (2, SensorData::new(2, false)),
             ]))),
         }
     }

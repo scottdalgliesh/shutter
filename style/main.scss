@@ -28,14 +28,13 @@ body {
 .sensor_card {
 	border-radius: 0.5em;
 	width:50%;
-	height: 2em;
+	height: 3em;
 	align-content: center;
+	position: relative;
 }
 
-.active {
-	background-color: coral;
-}
-
-.inactive {
-	background-color: cornflowerblue;
+.sensor_config {
+	position:absolute;
+	top:0px;
+	right:0px;
 }

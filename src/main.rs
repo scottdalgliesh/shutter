@@ -85,10 +85,7 @@ async fn set_sensor_state(
     if let Some(sensor_data) = app_sensor_state.get_mut(&sensor_id) {
         sensor_data.update_state(sensor_state)
     } else {
-        app_sensor_state.insert(
-            sensor_id,
-            SensorData::new(&format!("Sensor {sensor_id}"), sensor_state),
-        );
+        app_sensor_state.insert(sensor_id, SensorData::new(sensor_id, sensor_state));
     }
 
     // serialize sensor state to be passed to websocket
