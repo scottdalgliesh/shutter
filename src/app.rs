@@ -43,36 +43,6 @@ pub fn app() -> impl IntoView {
 #[component]
 fn home_page() -> impl IntoView {
     let state = create_resource(move || (), move |_| get_sensors());
-    let sensor_view = move || {
-        state.get().map(move |value| match value {
-            Ok(inner) => {
-                if inner.is_empty() {
-                    view! { <p>"No sensors were found."</p> }.into_view()
-                } else {
-                    // view! {
-                    // <For
-                    //     each= move || state.get().unwrap().unwrap().into_keys()
-                    //     key=|key| *key
-                    //     children=move |key| {
-                    //         let data = create_memo(move |_| {
-                    //             state.get().unwrap().unwrap().get(&key).unwrap().clone()
-                    //         });
-                    //         view! { <SensorCard data=data/> }
-                    //     }
-                    // />
-                    // }
-                    inner
-                        .into_values()
-                        .map(move |data| {
-                            view! { <SensorCard data=data/> }
-                        })
-                        .collect_view()
-                }
-            }
-            Err(_) => view! { <p>"Error loading data from Server."</p> }.into_view(),
-        })
-    };
-
     let (history, set_history) = create_signal(vec![]);
     use leptos_use::{use_websocket, UseWebsocketReturn};
     let UseWebsocketReturn { message, send, .. } = use_websocket("ws://localhost:3000/ws");
@@ -97,10 +67,25 @@ fn home_page() -> impl IntoView {
                     "Test the websocket connection by using an external post request to http://127.0.0.1:3000/api/<sensor_id>/<sensor_state>"
                 </p>
                 <h2>Sensors</h2>
-
-                <Transition fallback=move || {
-                    view! { <p>"Loading..."</p> }
-                }>{sensor_view}</Transition>
+                <Transition fallback=move || {view! {<p>"Loading..."</p>}}>
+                    <ErrorBoundary fallback=move |_| view! {"Error loading data"}>
+                        { state.and_then(|_| ()) } // triggers ErrorBoundary if applicable
+                        <For
+                            each= move || match state.get() {
+                                Some(Ok(data)) => data.into_values(),
+                                _ => Default::default(),
+                            }
+                            key= |item| item.id
+                            children= move |item| {
+                                let memo = create_memo(move |_| {
+                                    // safe to unwrap here since None/Error cases handled outside of <For>
+                                    state.get().unwrap().unwrap().get(&item.id).unwrap().clone()
+                                });
+                                view!{<SensorCard data=memo/>}
+                            }
+                        />
+                    </ErrorBoundary>
+                </Transition>
 
                 <h2>"Websocket History"</h2>
                 <For
@@ -116,15 +101,15 @@ fn home_page() -> impl IntoView {
 }
 
 #[component]
-fn sensor_card(data: SensorData) -> impl IntoView {
+fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
     // set up reactive current time (updated once per second)
     logging::log!("Rerendering card");
     let (now, set_now) = create_signal(time::OffsetDateTime::now_utc());
     use_interval_fn(move || set_now.set(time::OffsetDateTime::now_utc()), 1_000);
-    let since_last_update = move || now.get() - data.last_update;
+    let since_last_update = move || now.get() - data.get().last_update;
     let is_active = move || since_last_update() < time::Duration::seconds(10);
 
-    let color = move || match (data.state, is_active()) {
+    let color = move || match (data.get().state, is_active()) {
         (true, true) => "cornflowerblue",
         (false, true) => "coral",
         (_, false) => "grey",
@@ -132,15 +117,13 @@ fn sensor_card(data: SensorData) -> impl IntoView {
 
     // let show_config_modal = create_rw_signal(false);
     let (show_config_modal, set_show_config_modal) = create_signal(false);
-    let (id, _) = create_signal(data.id);
-    let (name, _) = create_signal(data.name.clone());
-    let (input, set_input) = create_signal(data.name);
+    let (input, set_input) = create_signal(data.get_untracked().name);
     let toasts = expect_context::<Toasts>();
 
     let update_sensor_name = create_server_action::<UpdateSensorName>();
     let update_sensor_name_callback = Callback::new(move |_| {
         update_sensor_name.dispatch(UpdateSensorName {
-            id: id.get(),
+            id: data.get().id,
             name: input.get().to_string(),
         });
         set_show_config_modal.set(false);
@@ -152,7 +135,7 @@ fn sensor_card(data: SensorData) -> impl IntoView {
                 created_at: time::OffsetDateTime::now_utc(),
                 variant: ToastVariant::Success,
                 header: "Sensor Name Updated".into_view(),
-                body: "Placeholder".into_view(),
+                body: "Sensor name successfully updated on server".into_view(),
                 timeout: ToastTimeout::DefaultDelay,
             });
             logging::log!("Triggered")
@@ -161,7 +144,7 @@ fn sensor_card(data: SensorData) -> impl IntoView {
 
     view! {
         <div class="sensor_card" style:background-color=color>
-            {name}
+            {move || data.get().name}
             <div class="sensor_config"><Button on_press= move |_| set_show_config_modal.set(true) variant=ButtonVariant::Flat><Icon icon=icondata::AiSettingOutlined /></Button></div>
             // <div class="sensor_config"><thaw::Button on_click= move |_| set_show_config_modal.set(true) variant=thaw::ButtonVariant::Text><thaw::Icon icon=icondata::AiSettingOutlined /></thaw::Button></div>
         </div>
@@ -195,6 +178,8 @@ fn sensor_card(data: SensorData) -> impl IntoView {
 
 #[server]
 pub async fn get_sensors() -> Result<SensorStateMap, ServerFnError> {
+    // uncomment to simulate server error
+    // Err(ServerFnError::ServerError("error".to_string()))
     Ok(expect_context::<AppState>()
         .sensor_state
         .lock()
@@ -213,8 +198,6 @@ pub async fn update_sensor_name(id: i32, name: String) -> Result<(), ServerFnErr
     let server_tx = app_state.tx.clone();
     let _ = server_tx.send(msg);
     drop(sensor_map);
-
-    std::thread::sleep(std::time::Duration::from_secs(1));
 
     logging::log!("Server: updated sensor: {:?} to name {:?}", id, name);
     Ok(())
