@@ -1,12 +1,11 @@
 use crate::error_template::{AppError, ErrorTemplate};
 use crate::state::{SensorData, SensorStateMap};
-// use icondata;
 use leptonic::components::prelude::*;
+use leptonic::prelude::*;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 use leptos_use::use_interval_fn;
-// use thaw;
 use uuid::Uuid;
 
 #[cfg(feature = "ssr")]
@@ -14,16 +13,10 @@ use crate::state::AppState;
 
 #[component]
 pub fn app() -> impl IntoView {
-    // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
-
     view! {
         <Stylesheet id="leptos" href="/pkg/shutter.css"/>
-
-        // sets the document title
         <Title text="Welcome to Leptos"/>
-
-        // content for this welcome page
         <Root default_theme=LeptonicTheme::default()>
             <Router fallback=|| {
                 let mut outside_errors = Errors::default();
@@ -59,42 +52,52 @@ fn home_page() -> impl IntoView {
     view! {
         <div id="app_window">
             <div id="app_content">
-                <h1>"Websocket Test"</h1>
-                <p>
-                    "This page demonstrates using a websocket to perform live updates in the UI in response to activity on the server."
-                </p>
-                <p>
-                    "Test the websocket connection by using an external post request to http://127.0.0.1:3000/api/<sensor_id>/<sensor_state>"
-                </p>
-                <h2>Sensors</h2>
-                <Transition fallback=move || {view! {<p>"Loading..."</p>}}>
-                    <ErrorBoundary fallback=move |_| view! {"Error loading data"}>
-                        { state.and_then(|_| ()) } // triggers ErrorBoundary if applicable
-                        <For
-                            each= move || match state.get() {
-                                Some(Ok(data)) => data.into_values(),
-                                _ => Default::default(),
-                            }
-                            key= |item| item.id
-                            children= move |item| {
-                                let memo = create_memo(move |_| {
-                                    // safe to unwrap here since None/Error cases handled outside of <For>
-                                    state.get().unwrap().unwrap().get(&item.id).unwrap().clone()
-                                });
-                                view!{<SensorCard data=memo/>}
-                            }
-                        />
-                    </ErrorBoundary>
-                </Transition>
-
-                <h2>"Websocket History"</h2>
-                <For
-                    each=move || history.get().into_iter().enumerate()
-                    key=|(index, _)| *index
-                    let:item
-                >
-                    <p>{item.1}</p>
-                </For>
+                <h1>"Sensor Readout"</h1>
+                <Tabs mount=Mount::Once>
+                    <Tab name="Sensors" label="Sensors".into_view()>
+                        <div id="tab_container">
+                        <Transition fallback=move || {view! {<p>"Loading..."</p>}}>
+                            <ErrorBoundary fallback=move |_| view! {"Error loading data"}>
+                                { state.and_then(|_| ()) } // triggers ErrorBoundary if applicable
+                                <For
+                                    each= move || match state.get() {
+                                        Some(Ok(data)) => data.into_values(),
+                                        _ => Default::default(),
+                                    }
+                                    key= |item| item.id
+                                    children= move |item| {
+                                        let memo = create_memo(move |_| {
+                                            // safe to unwrap here since None/Error cases handled outside of <For>
+                                            state.get().unwrap().unwrap().get(&item.id).unwrap().clone()
+                                        });
+                                        view!{<SensorCard data=memo/>}
+                                    }
+                                />
+                            </ErrorBoundary>
+                        </Transition>
+                        </div>
+                    </Tab>
+                    <Tab name="Info" label="Info".into_view()>
+                        <p>
+                            "This page demonstrates using a websocket to perform live updates in the UI in response to activity on the server."
+                        </p>
+                        <p>
+                            "Test the websocket connection by using an external post request to http://127.0.0.1:3000/api/<sensor_id>/<sensor_state>"
+                        </p>
+                    </Tab>
+                    <Tab name="Diagnostic Data" label="Diagnostic".into_view()>
+                        <div id="tab_container">
+                            <h2>"Websocket History"</h2>
+                            <For
+                                each=move || history.get().into_iter().enumerate()
+                                key=|(index, _)| *index
+                                let:item
+                            >
+                                <p>{item.1}</p>
+                            </For>
+                        </div>
+                    </Tab>
+                </Tabs>
             </div>
         </div>
     }
@@ -115,7 +118,6 @@ fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
         (_, false) => "grey",
     };
 
-    // let show_config_modal = create_rw_signal(false);
     let (show_config_modal, set_show_config_modal) = create_signal(false);
     let (input, set_input) = create_signal(data.get_untracked().name);
     let toasts = expect_context::<Toasts>();
@@ -146,7 +148,6 @@ fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
         <div class="sensor_card" style:background-color=color>
             {move || data.get().name}
             <div class="sensor_config"><Button on_press= move |_| set_show_config_modal.set(true) variant=ButtonVariant::Flat><Icon icon=icondata::AiSettingOutlined /></Button></div>
-            // <div class="sensor_config"><thaw::Button on_click= move |_| set_show_config_modal.set(true) variant=thaw::ButtonVariant::Text><thaw::Icon icon=icondata::AiSettingOutlined /></thaw::Button></div>
         </div>
         <Modal
             show_when=show_config_modal
@@ -165,14 +166,6 @@ fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
                 </ButtonWrapper>
             </ModalFooter>
         </Modal>
-
-        // <thaw::Modal title="Configure Sensor" show=show_config_modal>
-        //     <label for="update_name_input">"Update sensor label."</label>
-        //     <thaw::Input value=name attr:id="update_name_input"/>
-        //     <thaw::Button on_click= move |_| update_sensor_name.dispatch((id.get(), name.get().clone())) variant=thaw::ButtonVariant::Primary>"Update"</thaw::Button>
-        //     <thaw::Button on_click= move |_| show_config_modal.set(false) color=thaw::ButtonColor::Warning>"Cancel"</thaw::Button>
-        // </thaw::Modal>
-
     }
 }
 
