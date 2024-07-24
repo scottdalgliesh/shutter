@@ -120,6 +120,7 @@ fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
 
     let (show_config_modal, set_show_config_modal) = create_signal(false);
     let (input, set_input) = create_signal(data.get_untracked().name);
+    let disable_update_button = Signal::derive(move || input.get() == data.get().name);
     let toasts = expect_context::<Toasts>();
 
     let update_sensor_name = create_server_action::<UpdateSensorName>();
@@ -161,8 +162,8 @@ fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
             </ModalBody>
             <ModalFooter>
                 <ButtonWrapper>
-                    <Button on_press=update_sensor_name_callback >"Update"</Button>
-                    <Button on_press=move |_| set_show_config_modal(false) color=ButtonColor::Secondary>"Cancel"</Button>
+                    <Button on_press=update_sensor_name_callback disabled=disable_update_button>"Update"</Button>
+                    <Button on_press=move |_| {set_show_config_modal(false); set_input.set(data.get().name)} color=ButtonColor::Secondary>"Cancel"</Button>
                 </ButtonWrapper>
             </ModalFooter>
         </Modal>
