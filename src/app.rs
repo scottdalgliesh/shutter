@@ -40,8 +40,11 @@ fn home_page() -> impl IntoView {
     use leptos_use::{use_websocket, UseWebsocketReturn};
     let UseWebsocketReturn { message, send, .. } = use_websocket("ws://localhost:3000/ws");
 
+    // flag to pause reactive updates during deletion of a sensor from the database
+    let (pause_updates, set_pause_updates) = create_signal(false);
+
     create_effect(move |_| {
-        if let Some(msg) = message.get() {
+        if let (Some(msg), false) = (message.get(), pause_updates.get()) {
             let msg_state = serde_json::from_str(&msg).unwrap();
             set_history.update(|history| history.push(format!("Received: {msg}")));
             send(&msg);
@@ -70,7 +73,7 @@ fn home_page() -> impl IntoView {
                                             // safe to unwrap here since None/Error cases handled outside of <For>
                                             state.get().unwrap().unwrap().get(&item.id).unwrap().clone()
                                         });
-                                        view!{<SensorCard data=memo/>}
+                                        view!{<SensorCard data=memo pause_updates=set_pause_updates/>}
                                     }
                                 />
                             </ErrorBoundary>
@@ -104,7 +107,7 @@ fn home_page() -> impl IntoView {
 }
 
 #[component]
-fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
+fn sensor_card(data: Memo<SensorData>, pause_updates: WriteSignal<bool>) -> impl IntoView {
     // set up reactive current time (updated once per second)
     logging::log!("Rerendering card");
     let (now, set_now) = create_signal(time::OffsetDateTime::now_utc());
@@ -123,6 +126,13 @@ fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
     let disable_update_button = Signal::derive(move || input.get() == data.get().name);
     let toasts = expect_context::<Toasts>();
 
+    // todo: fix errors in chrome console after deletion & make toast visible
+    let delete_sensor = create_server_action::<DeleteSensor>();
+    let delete_sensor_callback = Callback::new(move |_| {
+        pause_updates.set(true);
+        delete_sensor.dispatch(DeleteSensor { id: data.get().id });
+        set_show_config_modal.set(false);
+    });
     let update_sensor_name = create_server_action::<UpdateSensorName>();
     let update_sensor_name_callback = Callback::new(move |_| {
         update_sensor_name.dispatch(UpdateSensorName {
@@ -144,6 +154,19 @@ fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
             logging::log!("Triggered")
         }
     });
+    let _ = create_effect(move |_| {
+        if delete_sensor.value().get().is_some() {
+            toasts.push(Toast {
+                id: Uuid::new_v4(),
+                created_at: time::OffsetDateTime::now_utc(),
+                variant: ToastVariant::Success,
+                header: "Sensor Deleted".into_view(),
+                body: "Sensor successfully deleted on server".into_view(),
+                timeout: ToastTimeout::DefaultDelay,
+            });
+            pause_updates.set(false);
+        }
+    });
 
     view! {
         <div class="sensor_card" style:background-color=color>
@@ -162,6 +185,7 @@ fn sensor_card(data: Memo<SensorData>) -> impl IntoView {
             </ModalBody>
             <ModalFooter>
                 <ButtonWrapper>
+                    <Button on_press=delete_sensor_callback color=ButtonColor::Danger>"Delete"</Button>
                     <Button on_press=update_sensor_name_callback disabled=disable_update_button>"Update"</Button>
                     <Button on_press=move |_| {set_show_config_modal(false); set_input.set(data.get().name)} color=ButtonColor::Secondary>"Cancel"</Button>
                 </ButtonWrapper>
@@ -194,5 +218,20 @@ pub async fn update_sensor_name(id: i32, name: String) -> Result<(), ServerFnErr
     drop(sensor_map);
 
     logging::log!("Server: updated sensor: {:?} to name {:?}", id, name);
+    Ok(())
+}
+
+#[server]
+pub async fn delete_sensor(id: i32) -> Result<(), ServerFnError> {
+    let app_state = expect_context::<AppState>();
+    let mut sensor_map = app_state.sensor_state.lock().unwrap();
+    sensor_map.remove(&id);
+
+    let msg = serde_json::to_string(&sensor_map.clone()).unwrap();
+    let server_tx = app_state.tx.clone();
+    let _ = server_tx.send(msg);
+    drop(sensor_map);
+
+    logging::log!("Server: deleted sensor {:?}", id);
     Ok(())
 }
