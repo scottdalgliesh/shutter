@@ -5,7 +5,7 @@ use leptonic::prelude::*;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
-use leptos_use::use_interval_fn;
+use leptos_use::{use_interval_fn, use_timeout_fn, UseTimeoutFnReturn};
 use uuid::Uuid;
 
 #[cfg(feature = "ssr")]
@@ -73,7 +73,7 @@ fn home_page() -> impl IntoView {
                                             // safe to unwrap here since None/Error cases handled outside of <For>
                                             state.get().unwrap().unwrap().get(&item.id).unwrap().clone()
                                         });
-                                        view!{<SensorCard data=memo pause_updates=set_pause_updates/>}
+                                        view!{<SensorCard data=memo set_pause_updates/>}
                                     }
                                 />
                             </ErrorBoundary>
@@ -107,7 +107,7 @@ fn home_page() -> impl IntoView {
 }
 
 #[component]
-fn sensor_card(data: Memo<SensorData>, pause_updates: WriteSignal<bool>) -> impl IntoView {
+fn sensor_card(data: Memo<SensorData>, set_pause_updates: WriteSignal<bool>) -> impl IntoView {
     // set up reactive current time (updated once per second)
     logging::log!("Rerendering card");
     let (now, set_now) = create_signal(time::OffsetDateTime::now_utc());
@@ -124,17 +124,47 @@ fn sensor_card(data: Memo<SensorData>, pause_updates: WriteSignal<bool>) -> impl
     let (show_config_modal, set_show_config_modal) = create_signal(false);
     let (input, set_input) = create_signal(data.get_untracked().name);
     let disable_update_button = Signal::derive(move || input.get() == data.get().name);
-    let toasts = expect_context::<Toasts>();
 
-    // todo: fix errors in chrome console after deletion & make toast visible
+    let toasts = expect_context::<Toasts>();
+    let push_toast = move |variant, header: &str, body: &str| {
+        toasts.push(Toast {
+            id: Uuid::new_v4(),
+            created_at: time::OffsetDateTime::now_utc(),
+            variant,
+            header: header.to_string().into_view(),
+            body: body.to_string().into_view(),
+            timeout: ToastTimeout::DefaultDelay,
+        })
+    };
+
+    // warn user if no response received from server
+    let UseTimeoutFnReturn {
+        start: timeout_start,
+        stop: timeout_stop,
+        ..
+    } = use_timeout_fn(
+        move |_: ()| {
+            push_toast(
+                ToastVariant::Warn,
+                "Cannot Reach Server",
+                "No response received from server",
+            );
+        },
+        3000.0,
+    );
+    let timeout_start_clone = timeout_start.clone();
+    let timeout_stop_clone = timeout_stop.clone();
+
     let delete_sensor = create_server_action::<DeleteSensor>();
     let delete_sensor_callback = Callback::new(move |_| {
-        pause_updates.set(true);
+        timeout_start(());
+        set_pause_updates.set(true);
         delete_sensor.dispatch(DeleteSensor { id: data.get().id });
         set_show_config_modal.set(false);
     });
     let update_sensor_name = create_server_action::<UpdateSensorName>();
     let update_sensor_name_callback = Callback::new(move |_| {
+        timeout_start_clone(());
         update_sensor_name.dispatch(UpdateSensorName {
             id: data.get().id,
             name: input.get().to_string(),
@@ -143,28 +173,23 @@ fn sensor_card(data: Memo<SensorData>, pause_updates: WriteSignal<bool>) -> impl
     });
     let _ = create_effect(move |_| {
         if update_sensor_name.value().get().is_some() {
-            toasts.push(Toast {
-                id: Uuid::new_v4(),
-                created_at: time::OffsetDateTime::now_utc(),
-                variant: ToastVariant::Success,
-                header: "Sensor Name Updated".into_view(),
-                body: "Sensor name successfully updated on server".into_view(),
-                timeout: ToastTimeout::DefaultDelay,
-            });
-            logging::log!("Triggered")
+            timeout_stop_clone();
+            push_toast(
+                ToastVariant::Success,
+                "Sensor Updated",
+                "Sensor name updated on server.",
+            );
         }
     });
     let _ = create_effect(move |_| {
         if delete_sensor.value().get().is_some() {
-            toasts.push(Toast {
-                id: Uuid::new_v4(),
-                created_at: time::OffsetDateTime::now_utc(),
-                variant: ToastVariant::Success,
-                header: "Sensor Deleted".into_view(),
-                body: "Sensor successfully deleted on server".into_view(),
-                timeout: ToastTimeout::DefaultDelay,
-            });
-            pause_updates.set(false);
+            timeout_stop();
+            push_toast(
+                ToastVariant::Success,
+                "Sensor Deleted",
+                "Sensor deleted on server.",
+            );
+            set_pause_updates.set(false);
         }
     });
 
