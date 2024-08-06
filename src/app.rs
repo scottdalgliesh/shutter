@@ -38,7 +38,7 @@ fn home_page() -> impl IntoView {
     let state = create_resource(move || (), move |_| get_sensors());
     let (history, set_history) = create_signal(vec![]);
     use leptos_use::{use_websocket, UseWebsocketReturn};
-    let UseWebsocketReturn { message, send, .. } = use_websocket("ws://localhost:3000/ws");
+    let UseWebsocketReturn { message, send, .. } = use_websocket("/ws");
 
     // flag to pause reactive updates during deletion of a sensor from the database
     let (pause_updates, set_pause_updates) = create_signal(false);
@@ -85,7 +85,7 @@ fn home_page() -> impl IntoView {
                             "This page demonstrates using a websocket to perform live updates in the UI in response to activity on the server."
                         </p>
                         <p>
-                            "Test the websocket connection by using an external post request to http://127.0.0.1:3000/api/<sensor_id>/<sensor_state>"
+                            "Test the websocket connection by using an external post request to http://<server_IP_address>:3000/api/<sensor_id>/<sensor_state>"
                         </p>
                     </Tab>
                     <Tab name="Diagnostic Data" label="Diagnostic".into_view()>

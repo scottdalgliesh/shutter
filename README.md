@@ -88,3 +88,13 @@ Finally, run the server binary.
 ## Licensing
 
 This template itself is released under the Unlicense. You should replace the LICENSE for your own application with an appropriate license if you plan to release it publicly.
+
+## Notes
+
+To expose the development server to other devices on a private network, the following options must be configured. These instructions are for a windows 11 device.
+1. Change the server IP address from `localhost:3000` to `<device_ip_address>:3000`
+    * Check device IP address via windows settings [instructions](https://support.microsoft.com/en-us/windows/find-your-ip-address-in-windows-f21a9bbc-c582-55cd-35e0-73431160a1b9)
+    * Create a .env file in the project root directory specifying the server IP address in the following format: `"LEPTOS_SITE_ADDR=XXX.XXX.XXX.XXX:3000"`
+    * Configure firewall to allow external traffic to the specified port [instructions](https://learn.microsoft.com/en-us/sql/reporting-services/report-server/configure-a-firewall-for-report-server-access?view=sql-server-ver16)
+2. Run the server
+3. Visit the new IP address from any device within the private network
