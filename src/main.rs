@@ -77,7 +77,7 @@ async fn socket(socket: WebSocket, app_state: AppState) {
 }
 
 async fn set_sensor_state(
-    Path((sensor_id, sensor_state)): Path<(i32, bool)>,
+    Path((sensor_id, sensor_state)): Path<(u64, bool)>,
     State(app_state): State<AppState>,
 ) {
     // update sensor state on server if existing, otherwise add new sensor

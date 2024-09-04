@@ -10,18 +10,18 @@ use {
     tokio::sync::broadcast,
 };
 
-pub type SensorStateMap = BTreeMap<i32, SensorData>;
+pub type SensorStateMap = BTreeMap<u64, SensorData>;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct SensorData {
-    pub id: i32,
+    pub id: u64,
     pub name: String,
     pub state: bool,
     pub last_update: OffsetDateTime,
 }
 
 impl SensorData {
-    pub fn new(id: i32, state: bool) -> Self {
+    pub fn new(id: u64, state: bool) -> Self {
         Self {
             id,
             name: format!("Sensor {id}"),

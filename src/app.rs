@@ -231,7 +231,7 @@ pub async fn get_sensors() -> Result<SensorStateMap, ServerFnError> {
 }
 
 #[server]
-pub async fn update_sensor_name(id: i32, name: String) -> Result<(), ServerFnError> {
+pub async fn update_sensor_name(id: u64, name: String) -> Result<(), ServerFnError> {
     let app_state = expect_context::<AppState>();
     let name_ = name.clone();
     let mut sensor_map = app_state.sensor_state.lock().unwrap();
@@ -247,7 +247,7 @@ pub async fn update_sensor_name(id: i32, name: String) -> Result<(), ServerFnErr
 }
 
 #[server]
-pub async fn delete_sensor(id: i32) -> Result<(), ServerFnError> {
+pub async fn delete_sensor(id: u64) -> Result<(), ServerFnError> {
     let app_state = expect_context::<AppState>();
     let mut sensor_map = app_state.sensor_state.lock().unwrap();
     sensor_map.remove(&id);
