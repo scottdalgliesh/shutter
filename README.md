@@ -1,100 +1,29 @@
-<picture>
-    <source srcset="https://raw.githubusercontent.com/leptos-rs/leptos/main/docs/logos/Leptos_logo_Solid_White.svg" media="(prefers-color-scheme: dark)">
-    <img src="https://raw.githubusercontent.com/leptos-rs/leptos/main/docs/logos/Leptos_logo_RGB.svg" alt="Leptos Logo">
-</picture>
+# Shutter
 
-# Leptos Axum Starter Template
+A simple web server to display the live status of a wireless ESP32-based hall effect sensor. It can be used to check if your window is shut(ter).
 
-This is a template for use with the [Leptos](https://github.com/leptos-rs/leptos) web framework and the [cargo-leptos](https://github.com/akesson/cargo-leptos) tool using [Axum](https://github.com/tokio-rs/axum).
+## Description
+* Intended to display the current status of ESP32C3-based wireless hall-effect sensor(s) setup per the instructions provided here: [shutter-sensor](https://github.com/scottdalgliesh/shutter-sensor).
+* Frontend and server built with [Leptos](https://github.com/leptos-rs/leptos) and [Axum](https://github.com/tokio-rs/axum), respectively.
+* Uses websockets to keep the sensor status readout live.
 
-## Creating your template repo
+## Setup
+* Clone this repo, and install the [Rust](https://www.rust-lang.org/learn/get-started) toolchain.
+* Follow the steps in [Network Settings](## Network Settings) to configure server URL and configure network to accept incoming data from sensor hardware.
+* Install cargo leptos via: `cargo install cargo-leptos`
+* Run local server via: `cargo leptos serve`
 
-If you don't have `cargo-leptos` installed you can install it with
+## Network Settings
 
-```bash
-cargo install cargo-leptos
-```
+To expose the development server to other devices on a private network (may be required to receive data from sensor hardware), the following options must be configured. These instructions are for a windows 11 device. **This should only be done on a private network.**
+1. Change the server IP address from `localhost:3000` to `<device_ip_address>:3000`, as described below:
+    * Check device IP address via windows settings [instructions](https://support.microsoft.com/en-us/windows/find-your-ip-address-in-windows-f21a9bbc-c582-55cd-35e0-73431160a1b9)
+    * Create a .env file in the project root directory specifying the server IP address in the following format: `"LEPTOS_SITE_ADDR=XXX.XXX.XXX.XXX:3000"`
+    * Configure firewall to allow external traffic (external to device, but still within the private network) to the specified port ([instructions](https://learn.microsoft.com/en-us/sql/reporting-services/report-server/configure-a-firewall-for-report-server-access?view=sql-server-ver16))
+2. Run the server (see above)
+3. Visit the new IP address from any device **within the private network**
 
-Then run
-```bash
-cargo leptos new --git leptos-rs/start-axum
-```
-
-to generate a new project template.
-
-```bash
-cd shutter
-```
-
-to go to your newly created project.  
-Feel free to explore the project structure, but the best place to start with your application code is in `src/app.rs`.  
-Addtionally, Cargo.toml may need updating as new versions of the dependencies are released, especially if things are not working after a `cargo update`.
-
-## Running your project
-
-```bash
-cargo leptos watch
-```
-
-## Installing Additional Tools
-
-By default, `cargo-leptos` uses `nightly` Rust, `cargo-generate`, and `sass`. If you run into any trouble, you may need to install one or more of these tools.
-
-1. `rustup toolchain install nightly --allow-downgrade` - make sure you have Rust nightly
-2. `rustup target add wasm32-unknown-unknown` - add the ability to compile Rust to WebAssembly
-3. `cargo install cargo-generate` - install `cargo-generate` binary (should be installed automatically in future)
-4. `npm install -g sass` - install `dart-sass` (should be optional in future
-
-## Compiling for Release
-```bash
-cargo leptos build --release
-```
-
-Will generate your server binary in target/server/release and your site package in target/site
-
-## Testing Your Project
-```bash
-cargo leptos end-to-end
-```
-
-```bash
-cargo leptos end-to-end --release
-```
-
-Cargo-leptos uses Playwright as the end-to-end test tool.  
-Tests are located in end2end/tests directory.
-
-## Executing a Server on a Remote Machine Without the Toolchain
-After running a `cargo leptos build --release` the minimum files needed are:
-
-1. The server binary located in `target/server/release`
-2. The `site` directory and all files within located in `target/site`
-
-Copy these files to your remote server. The directory structure should be:
-```text
-shutter
-site/
-```
-Set the following environment variables (updating for your project as needed):
-```text
-LEPTOS_OUTPUT_NAME="shutter"
-LEPTOS_SITE_ROOT="site"
-LEPTOS_SITE_PKG_DIR="pkg"
-LEPTOS_SITE_ADDR="127.0.0.1:3000"
-LEPTOS_RELOAD_PORT="3001"
-```
-Finally, run the server binary.
 
 ## Licensing
 
-This template itself is released under the Unlicense. You should replace the LICENSE for your own application with an appropriate license if you plan to release it publicly.
-
-## Notes
-
-To expose the development server to other devices on a private network, the following options must be configured. These instructions are for a windows 11 device.
-1. Change the server IP address from `localhost:3000` to `<device_ip_address>:3000`
-    * Check device IP address via windows settings [instructions](https://support.microsoft.com/en-us/windows/find-your-ip-address-in-windows-f21a9bbc-c582-55cd-35e0-73431160a1b9)
-    * Create a .env file in the project root directory specifying the server IP address in the following format: `"LEPTOS_SITE_ADDR=XXX.XXX.XXX.XXX:3000"`
-    * Configure firewall to allow external traffic to the specified port [instructions](https://learn.microsoft.com/en-us/sql/reporting-services/report-server/configure-a-firewall-for-report-server-access?view=sql-server-ver16)
-2. Run the server
-3. Visit the new IP address from any device within the private network
+[MIT](https://choosealicense.com/licenses/mit/)
